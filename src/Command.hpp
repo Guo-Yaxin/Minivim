@@ -11,7 +11,7 @@ Command.hpp
 #include "Types.hpp"
 
 
-namespace sjtu {
+namespace sjtu {      
 
 //ActionKind是给NormalMode的用户命令的简单枚举类
 enum class ActionKind {

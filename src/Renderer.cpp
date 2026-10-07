@@ -1,5 +1,6 @@
 #include "Renderer.hpp"
 #include "TextLayout.hpp"
+#include <algorithm>
 
 namespace sjtu {
 
@@ -40,18 +41,32 @@ std::string Renderer::Render(const Buffer& buffer, const Window& window, const R
     frame += "\x1b[H";
 
     for (std::size_t screen_row = 0; screen_row < viewport.rows_; ++screen_row) {
-       //这里是提示2中的部分
+        //这里是提示2中的部分
+        std::string s_show;
+        size_t row = viewport.top_ + screen_row;
+
+        if(row < buffer.GetLineCount()){
+            std::string s_expanded = ExpandForDisplay(buffer.GetLineAt(row));
+            if(viewport.left_ < s_expanded.size()) {
+                s_show = s_expanded.substr(viewport.left_, width);
+            }
+        }
+        else{
+            s_show = '~';
+        }
+
+        AppendClearedLine(frame, s_show, width, true);
     }
 
-    std::string bottom;
-    //if (state.mode_ == Mode::CommandLine) {
-        //bottom = ":" + state.command_;
-    //} else if (!state.message_.empty()) {
-        //bottom = state.message_;
-    //} else if (state.mode_ == Mode::Insert) {
-        //bottom = "-- INSERT --";
-    //}
-    //AppendClearedLine(frame, bottom, width, false);
+    std::string bottom; 
+    if (state.mode_ == Mode::CommandLine) {
+        bottom = ":" + state.command_;
+    } else if (!state.message_.empty()) {
+        bottom = state.message_;
+    } else if (state.mode_ == Mode::Insert) {
+        bottom = "-- INSERT --";
+    }
+    AppendClearedLine(frame, bottom, width, false);
     //这里是提示3中的部分
     //我们只会在CommandMode的时候检查一下底部的命令内容,在NormalMode不会看底部,所以message你可以随意写
 
@@ -59,6 +74,16 @@ std::string Renderer::Render(const Buffer& buffer, const Window& window, const R
     std::size_t cursor_column{0};
 
     //计算cursor_row和cursor_column即可    
+    if(state.mode_ == Mode::CommandLine){
+        cursor_row = viewport.rows_ + 1;
+        cursor_column = std::min(state.command_.size() + 2, width);
+    }
+    else{
+        cursor_row = window.GetCursor().row_ - viewport.top_ + 1;
+        const std::string& cur_row = buffer.GetLineAt(window.GetCursor().row_);
+        cursor_column = BufferColumnToRenderColumn(cur_row, window.GetCursor().column_) - viewport.left_ + 1;
+    }
+    
 
     frame += CursorSequence(cursor_row, cursor_column);
     frame += "\x1b[?25h";
@@ -68,6 +93,18 @@ std::string Renderer::Render(const Buffer& buffer, const Window& window, const R
 std::string Renderer::ExpandForDisplay(std::string_view line) {
     //从左到右扫描buffer中一整行的实际内容,并扩展到render应该输出的视图
     //你应该在Render中调用这个函数,并把函数返回的结果按照视口剪切用于Render的某些行
-    return {};
+    std::string s1{};
+    size_t size = line.size(), count = 0,num = 0;
+    for(int i = 0; i < size; i++){
+        if(line[i] == '\t'){
+            num = NextScreenColumn(i + count , '\t') - (i + count);
+            count += num - 1;
+            s1.append(num, ' ');
+        }
+        else{
+            s1 += line[i];
+        }
+    }
+    return s1;
 }
 } // namespace sjtu

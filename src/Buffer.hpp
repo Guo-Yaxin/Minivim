@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <vector>
+#include <string>
 
 namespace sjtu {
 
@@ -34,6 +35,8 @@ private:
 
     std::vector<std::string> lines_; //文件每行的字符内容,不包含末尾换行符
     std::filesystem::path path_;    //打开文件的路径
+    bool modified = false;
+    bool empty_file = true;// true：lines_ 中唯一的 "" 只是空文件的占位行，保存时不输出;false：lines_ 中每一项都代表实际文本行，保存时每行输出 '\n'。
 };
 
 } // namespace sjtu
